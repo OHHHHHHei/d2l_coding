@@ -73,9 +73,9 @@ test_data = pd.read_csv(download('kaggle_house_test'))
 all_features = pd.concat((train_data.iloc[:, 1:-1], test_data.iloc[:, 1:]))
 
 # 若无法获得测试数据，则可根据训练数据计算均值和标准差
-numeric_features = all_features.dtypes[all_features.dtypes != 'object'].index
+numeric_features = all_features.dtypes[all_features.dtypes != 'object'].index # 1. 筛选出所有数值类型的列名
 all_features[numeric_features] = all_features[numeric_features].apply(
-    lambda x: (x - x.mean()) / (x.std()))
+    lambda x: (x - x.mean()) / (x.std())) # 2. 标准化数值特征
 # 在标准化数据之后，所有均值消失，因此我们可以将缺失值设置为0
 all_features[numeric_features] = all_features[numeric_features].fillna(0)
 
@@ -102,6 +102,7 @@ def get_net():
 def log_rmse(net, features, labels):
     # 为了在取对数时进一步稳定该值，将小于1的值设置为1
     clipped_preds = torch.clamp(net(features), 1, float('inf'))
+    # 计算均方根误差
     rmse = torch.sqrt(loss(torch.log(clipped_preds),
                            torch.log(labels)))
     return rmse.item()
@@ -127,16 +128,20 @@ def train(net, train_features, train_labels, test_features, test_labels,
 # K折交叉验证
 def get_k_fold_data(k, i, X, y):
     assert k > 1
-    fold_size = X.shape[0] // k
+    fold_size = X.shape[0] // k # 每折的样本数
     X_train, y_train = None, None
     for j in range(k):
+        # 使用切片 slice 获取第 j 折的数据索引范围
         idx = slice(j * fold_size, (j + 1) * fold_size)
         X_part, y_part = X[idx, :], y[idx]
         if j == i:
+            # 如果是第 i 折，把它当作验证集
             X_valid, y_valid = X_part, y_part
         elif X_train is None:
+            # 第一次遇到训练数据，初始化
             X_train, y_train = X_part, y_part
         else:
+            # 后续遇到的训练数据，拼接到 X_train 后面
             X_train = torch.cat([X_train, X_part], 0)
             y_train = torch.cat([y_train, y_part], 0)
     return X_train, y_train, X_valid, y_valid
@@ -145,10 +150,14 @@ def k_fold(k, X_train, y_train, num_epochs, learning_rate, weight_decay,
            batch_size):
     train_l_sum, valid_l_sum = 0, 0
     for i in range(k):
+        # 获取第 i 折数据
         data = get_k_fold_data(k, i, X_train, y_train)
+        # 重新初始化一个新模型（非常重要！每折都要是新的）
         net = get_net()
+        # 训练并评估模型
         train_ls, valid_ls = train(net, *data, num_epochs, learning_rate,
                                    weight_decay, batch_size)
+        # 记录误差
         train_l_sum += train_ls[-1]
         valid_l_sum += valid_ls[-1]
         if i == 0:
