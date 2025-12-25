@@ -209,7 +209,6 @@ state = net.begin_state(X.shape[0], d2l.try_gpu())
 # 输入 X 形状：(批量大小, 时间步数)
 # 输出 Y 形状：(批量大小 * 时间步数, 词表大小)
 Y, new_state = net(X.to(d2l.try_gpu()), state)
-Y.shape, len(new_state), new_state[0].shape
 
 # ==================== 文本预测与生成 ====================
 
@@ -254,9 +253,6 @@ def predict_ch8(prefix, num_preds, net, vocab, device):  #@save
     
     # 将索引序列转换回字符串
     return ''.join([vocab.idx_to_token[i] for i in outputs])
-
-# 测试预测函数（模型未训练，输出是随机的）
-predict_ch8('time traveller ', 10, net, vocab, d2l.try_gpu())
 
 # ==================== 梯度裁剪 ====================
 
